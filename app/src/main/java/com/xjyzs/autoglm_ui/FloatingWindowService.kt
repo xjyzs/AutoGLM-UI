@@ -151,9 +151,14 @@ class FloatingWindowService : Service() {
         )
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+//        val intent = Intent(this, MainActivity::class.java)
+//        val pendingIntent = PendingIntent.getActivity(
+//            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+//        )
         val notification =
-            NotificationCompat.Builder(this, "panel").setContentTitle("AutoGLM-UI正在运行中")
-                .setSmallIcon(R.drawable.ic_launcher_foreground).build()
+            NotificationCompat.Builder(this, "panel").setContentTitle("AutoGLM-UI")
+                .setSmallIcon(R.drawable.ic_launcher_foreground).setOngoing(true)
+                .setRequestPromotedOngoing(true).build()
         startForeground(1001, notification)
 
         lifecycleOwner = MyLifecycleOwner().apply {
@@ -268,10 +273,11 @@ fun FloatingPanel(
         Regex("""do\(action="(?<action>.*?)"(?<args>.*?)\)""", setOf(RegexOption.DOT_MATCHES_ALL))
     val lazyListState = rememberLazyListState()
     var ime = ""
-    val apiPref= context.getSharedPreferences("api", Context.MODE_PRIVATE)
+    val apiPref = context.getSharedPreferences("api", Context.MODE_PRIVATE)
     var apiUrl by remember { mutableStateOf("") }
     var apiKey by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
+    var continueSending by remember { mutableStateOf(false) }
     val msgs = remember {
         mutableStateListOf(
             Msg(
@@ -297,11 +303,11 @@ fun FloatingPanel(
             intent, PackageManager.MATCH_ALL
         )
         for (i in apps) {
-            val label=i.loadLabel(context.packageManager).toString()
+            val label = i.loadLabel(context.packageManager).toString()
             APP_PACKAGES[label] =
                 i.activityInfo.packageName
-            val lowercasedLabel=label.lowercase()
-            if (lowercasedLabel!=label){
+            val lowercasedLabel = label.lowercase()
+            if (lowercasedLabel != label) {
                 APP_PACKAGES[lowercasedLabel] =
                     i.activityInfo.packageName
             }
@@ -317,7 +323,6 @@ fun FloatingPanel(
     }
     LaunchedEffect(Unit) {
         apiUrl = apiPref.getString("apiUrl", "")!!
-        println("adasdadasdada"+apiUrl)
         apiKey = apiPref.getString("apiKey", "")!!
         model = apiPref.getString("model", "")!!
     }
@@ -341,7 +346,6 @@ fun FloatingPanel(
             )
             val requestBody =
                 Gson().toJson(bodyMap).toRequestBody("application/json".toMediaTypeOrNull())
-            println("adasdadasdada"+apiUrl+"\n\n\n\n\n\n\n")
             val request = Request.Builder().url(apiUrl).post(requestBody)
                 .addHeader("Authorization", "Bearer $apiKey").build()
             msgs.add(Msg("assistant", mutableStateOf(JsonPrimitive(""))))
@@ -351,13 +355,14 @@ fun FloatingPanel(
                 val response = call.execute()
                 withContext(Dispatchers.Main) {
                     running = 1
+                    updateNotification(context,"执行中")
                 }
                 response.body.byteStream().use { stream ->
                     BufferedReader(InputStreamReader(stream)).use { reader ->
                         var line: String?
                         // 解析
                         while (reader.readLine().also { line = it } != null) {
-                            running = 1
+                            //running = 1
                             try {
                                 val cleanLine = line?.removePrefix("data: ")?.trim()
                                 val json = JsonParser.parseString(cleanLine).asJsonObject
@@ -365,7 +370,7 @@ fun FloatingPanel(
                                     json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject
                                 val delta = choices?.getAsJsonObject("delta")
                                 if (cancel) {
-                                    cancel = false; running = 0; break
+                                    cancel = false; running = 0;updateNotification(context,"已取消"); break
                                 }
                                 if (delta != null) {
                                     withContext(Dispatchers.Main) {
@@ -385,6 +390,7 @@ fun FloatingPanel(
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     running = 0
+                    updateNotification(context,"错误")
                     val intent = Intent(context, DialogActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -395,7 +401,7 @@ fun FloatingPanel(
                 }
             }
             val founds = re.findAll(msgs.last().content.value.asJsonPrimitive.asString)
-            var continueSending=false
+            continueSending = false
             for (found in founds) {
                 if (found.groups["action"]!!.value != "Take_over") {
                     operation(
@@ -405,10 +411,12 @@ fun FloatingPanel(
                         mFloatingView
                     )
                     delay(1900)
-                    continueSending=true
+                    continueSending = true
                 } else {
                     withContext(Dispatchers.Main) {
                         running = 2
+                        println("接管")
+                        updateNotification(context,"请接管")
                     }
                 }
             }
@@ -428,6 +436,7 @@ fun FloatingPanel(
                 Runtime.getRuntime().exec(arrayOf("su", "-c", "ime set $ime"))
                 withContext(Dispatchers.Main) {
                     running = 0
+                    updateNotification(context,"已完成")
                     val channel = NotificationChannel(
                         "finish", "任务完成提醒", NotificationManager.IMPORTANCE_HIGH
                     ).apply {
@@ -516,11 +525,13 @@ fun FloatingPanel(
                                             )
                                         )
                                         send()
+                                        updateNotification(context,"执行中")
                                     }
 
                                     2 -> {
                                         running = 3
                                         send()
+                                        updateNotification(context,"执行中")
                                     }
 
                                     else -> {
@@ -530,21 +541,28 @@ fun FloatingPanel(
                                         streamJob?.cancel()
                                         streamJob = null
                                         running = 0
+                                        updateNotification(context,"已取消")
                                         context.sendBroadcast(Intent("ACTION_SHOW_FLOATING"))
                                         Runtime.getRuntime()
                                             .exec(arrayOf("su", "-c", "ime set $ime"))
-                                        if (msgs.last().role=="user" || msgs.last().role=="assistant" && msgs.last().content.value.asJsonPrimitive.asString.isEmpty())msgs.removeAt(msgs.lastIndex)
+                                        if (msgs.last().role == "user" || msgs.last().role == "assistant" && msgs.last().content.value.asJsonPrimitive.asString.isEmpty()) msgs.removeAt(
+                                            msgs.lastIndex
+                                        )
                                         val serializableMsgs = msgs.map { msg ->
                                             mapOf(
                                                 "role" to msg.role, "content" to msg.content.value
                                             )
                                         }
                                         val bodyMap = mapOf(
-                                            "model" to model, "messages" to serializableMsgs.toList(), "stream" to true
+                                            "model" to model,
+                                            "messages" to serializableMsgs.toList(),
+                                            "stream" to true
                                         )
                                         val requestBody =
                                             Gson().toJson(bodyMap)
-                                        File("/data/user/0/${context.packageName}/1.json").writeText(requestBody)
+                                        File("/data/user/0/${context.packageName}/1.json").writeText(
+                                            requestBody
+                                        )
                                     }
                                 }
 
@@ -618,4 +636,13 @@ fun FloatingPanel(
             }
         }
     }
+}
+
+fun updateNotification(context: Context, txt: String) {
+    val notificationManager = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    val notification =
+        NotificationCompat.Builder(context, "panel").setContentTitle("AutoGLM-UI")
+            .setSmallIcon(R.drawable.ic_launcher_foreground).setOngoing(true)
+            .setRequestPromotedOngoing(true).setShortCriticalText(txt).build()
+    notificationManager.notify(1001, notification)
 }
