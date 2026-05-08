@@ -151,14 +151,9 @@ class FloatingWindowService : Service() {
         )
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
-//        val intent = Intent(this, MainActivity::class.java)
-//        val pendingIntent = PendingIntent.getActivity(
-//            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-//        )
-        val notification =
-            NotificationCompat.Builder(this, "panel").setContentTitle("AutoGLM-UI")
-                .setSmallIcon(R.drawable.ic_launcher_foreground).setOngoing(true)
-                .setRequestPromotedOngoing(true).build()
+        val notification = NotificationCompat.Builder(this, "panel").setContentTitle("AutoGLM-UI")
+            .setSmallIcon(R.drawable.icon).setOngoing(true)
+            .setRequestPromotedOngoing(true).build()
         startForeground(1001, notification)
 
         lifecycleOwner = MyLifecycleOwner().apply {
@@ -296,6 +291,7 @@ fun FloatingPanel(
         )
     }
     LaunchedEffect(Unit) {
+//        var adbKeyboardFlag = false
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
@@ -303,13 +299,14 @@ fun FloatingPanel(
             intent, PackageManager.MATCH_ALL
         )
         for (i in apps) {
+//            if (i.activityInfo.packageName == "com.android.adbkeyboard") {
+//                adbKeyboardFlag = true
+//            }
             val label = i.loadLabel(context.packageManager).toString()
-            APP_PACKAGES[label] =
-                i.activityInfo.packageName
+            APP_PACKAGES[label] = i.activityInfo.packageName
             val lowercasedLabel = label.lowercase()
             if (lowercasedLabel != label) {
-                APP_PACKAGES[lowercasedLabel] =
-                    i.activityInfo.packageName
+                APP_PACKAGES[lowercasedLabel] = i.activityInfo.packageName
             }
         }
         val list = APP_PACKAGES_SPECIAL.entries.toList()
@@ -320,6 +317,15 @@ fun FloatingPanel(
         for (i in APP_PACKAGES) {
             PACKAGES_APP[i.value.lowercase(Locale.US)] = i.key
         }
+//        if (!adbKeyboardFlag) {
+//            val intent = Intent(context, DialogActivity::class.java).apply {
+//                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+//            }
+//            intent.putExtra("title", "错误")
+//            intent.putExtra("text", "e.stackTraceToString()")
+//            context.startActivity(intent)
+//        }
     }
     LaunchedEffect(Unit) {
         apiUrl = apiPref.getString("apiUrl", "")!!
@@ -342,7 +348,9 @@ fun FloatingPanel(
                 )
             }
             val bodyMap = mapOf(
-                "model" to model, "messages" to serializableMsgs.toList(), "stream" to true
+                "model" to model,
+                "messages" to serializableMsgs.toList(),
+                "stream" to true
             )
             val requestBody =
                 Gson().toJson(bodyMap).toRequestBody("application/json".toMediaTypeOrNull())
@@ -355,7 +363,7 @@ fun FloatingPanel(
                 val response = call.execute()
                 withContext(Dispatchers.Main) {
                     running = 1
-                    updateNotification(context,"执行中")
+                    updateNotification(context, "执行中")
                 }
                 response.body.byteStream().use { stream ->
                     BufferedReader(InputStreamReader(stream)).use { reader ->
@@ -370,7 +378,9 @@ fun FloatingPanel(
                                     json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject
                                 val delta = choices?.getAsJsonObject("delta")
                                 if (cancel) {
-                                    cancel = false; running = 0;updateNotification(context,"已取消"); break
+                                    cancel = false; running = 0; updateNotification(
+                                        context, "已取消"
+                                    ); break
                                 }
                                 if (delta != null) {
                                     withContext(Dispatchers.Main) {
@@ -390,7 +400,7 @@ fun FloatingPanel(
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     running = 0
-                    updateNotification(context,"错误")
+                    updateNotification(context, "错误")
                     val intent = Intent(context, DialogActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -416,7 +426,7 @@ fun FloatingPanel(
                     withContext(Dispatchers.Main) {
                         running = 2
                         println("接管")
-                        updateNotification(context,"请接管")
+                        updateNotification(context, "请接管")
                     }
                 }
             }
@@ -436,23 +446,22 @@ fun FloatingPanel(
                 Runtime.getRuntime().exec(arrayOf("su", "-c", "ime set $ime"))
                 withContext(Dispatchers.Main) {
                     running = 0
-                    updateNotification(context,"已完成")
+                    updateNotification(context, "已完成")
                     val channel = NotificationChannel(
                         "finish", "任务完成提醒", NotificationManager.IMPORTANCE_HIGH
                     ).apply {
                         enableVibration(true)
                         setSound(
-                            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                            null
+                            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), null
                         )
                     }
                     val notificationManager =
                         context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
                     notificationManager.createNotificationChannel(channel)
-                    val notification = NotificationCompat.Builder(context, "finish")
-                        .setContentTitle("任务已完成!")
-                        .setContentText(found.groups["message"]!!.value)
-                        .setSmallIcon(R.drawable.ic_launcher_foreground).build()
+                    val notification =
+                        NotificationCompat.Builder(context, "finish").setContentTitle("任务已完成!")
+                            .setContentText(found.groups["message"]!!.value)
+                            .setSmallIcon(R.drawable.icon).build()
                     notificationManager.notify(System.currentTimeMillis().toInt(), notification)
                 }
             }
@@ -514,8 +523,7 @@ fun FloatingPanel(
                                             )
                                         )
                                         ime = process.inputStream.bufferedReader()
-                                            .use { it.readText() }
-                                            .trim()
+                                            .use { it.readText() }.trim()
                                         process.waitFor()
                                         Runtime.getRuntime().exec(
                                             arrayOf(
@@ -525,13 +533,13 @@ fun FloatingPanel(
                                             )
                                         )
                                         send()
-                                        updateNotification(context,"执行中")
+                                        updateNotification(context, "执行中")
                                     }
 
                                     2 -> {
                                         running = 3
                                         send()
-                                        updateNotification(context,"执行中")
+                                        updateNotification(context, "执行中")
                                     }
 
                                     else -> {
@@ -541,7 +549,7 @@ fun FloatingPanel(
                                         streamJob?.cancel()
                                         streamJob = null
                                         running = 0
-                                        updateNotification(context,"已取消")
+                                        updateNotification(context, "已取消")
                                         context.sendBroadcast(Intent("ACTION_SHOW_FLOATING"))
                                         Runtime.getRuntime()
                                             .exec(arrayOf("su", "-c", "ime set $ime"))
@@ -558,8 +566,7 @@ fun FloatingPanel(
                                             "messages" to serializableMsgs.toList(),
                                             "stream" to true
                                         )
-                                        val requestBody =
-                                            Gson().toJson(bodyMap)
+                                        val requestBody = Gson().toJson(bodyMap)
                                         File("/data/user/0/${context.packageName}/1.json").writeText(
                                             requestBody
                                         )
@@ -636,13 +643,31 @@ fun FloatingPanel(
             }
         }
     }
+
+//    if (keyboardDialogExpanded) {
+//        AlertDialog(
+//            onDismissRequest = { keyboardDialogExpanded = false },
+//            dismissButton = {
+//                TextButton({ keyboardDialogExpanded = false }) {
+//                    Text("我知道了")
+//                }
+//            },
+//            confirmButton = {
+//                TextButton({
+//                    keyboardDialogExpanded = false
+//                    val intent = Intent(Intent.ACTION_VIEW,
+//                        "https://github.com/senzhk/ADBKeyBoard/blob/master/ADBKeyboard.apk".toUri())
+//                    context.startActivity(intent)
+//                }) { Text("确定") }
+//            },
+//            text = { Text("AI 自动输入文本需要 ADBKeyboard 的支持\n可前往 https://github.com/senzhk/ADBKeyBoard/blob/master/ADBKeyboard.apk 下载") })
+//    }
 }
 
 fun updateNotification(context: Context, txt: String) {
     val notificationManager = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-    val notification =
-        NotificationCompat.Builder(context, "panel").setContentTitle("AutoGLM-UI")
-            .setSmallIcon(R.drawable.ic_launcher_foreground).setOngoing(true)
-            .setRequestPromotedOngoing(true).setShortCriticalText(txt).build()
+    val notification = NotificationCompat.Builder(context, "panel").setContentTitle("AutoGLM-UI")
+        .setSmallIcon(R.drawable.icon).setOngoing(true)
+        .setRequestPromotedOngoing(true).setShortCriticalText(txt).build()
     notificationManager.notify(1001, notification)
 }

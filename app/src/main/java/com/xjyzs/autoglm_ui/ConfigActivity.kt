@@ -2,15 +2,12 @@ package com.xjyzs.autoglm_ui
 
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,20 +17,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,8 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import androidx.lifecycle.viewModelScope
-import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.xjyzs.autoglm_ui.ui.theme.AutoGLMUITheme
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +54,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import kotlin.collections.iterator
 
 class ConfigActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,18 +67,18 @@ class ConfigActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ConfigUI(){
-    val context= LocalContext.current
+fun ConfigUI() {
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
     var apiUrl by remember { mutableStateOf("") }
     var apiKey by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var modelsExpanded by remember { mutableStateOf(false) }
-    val models= remember {mutableStateListOf<String>()}
-    val apiPref= context.getSharedPreferences("api", Context.MODE_PRIVATE)
+    val models = remember { mutableStateListOf<String>() }
+    val apiPref = context.getSharedPreferences("api", Context.MODE_PRIVATE)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     LaunchedEffect(Unit) {
         apiUrl = apiPref.getString("apiUrl", "")!!
@@ -127,24 +122,33 @@ fun ConfigUI(){
     }
     Scaffold(
         topBar = {
-            TopAppBar(
+            LargeFlexibleTopAppBar(
                 title = { Text("设置") },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        val intent = Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                        (context as ComponentActivity).finish()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "")
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, MainActivity::class.java).apply {
+                                flags =
+                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(intent)
+                            (context as ComponentActivity).finish()
+                        }, colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                     }
                 }
             )
         }) { innerPadding ->
         Column(
-            Modifier.fillMaxSize().wrapContentSize(Alignment.Center).padding(innerPadding)
-                .padding(30.dp).verticalScroll(scrollState)
+            Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+                .padding(innerPadding)
+                .padding(30.dp)
+                .verticalScroll(scrollState)
         ) {
             TextField(
                 label = { Text("API URL") },
@@ -199,9 +203,9 @@ fun ConfigUI(){
             }
             Button({
                 apiPref.edit {
-                    putString("apiUrl",apiUrl)
-                    putString("apiKey",apiKey)
-                    putString("model",model)
+                    putString("apiUrl", apiUrl)
+                    putString("apiKey", apiKey)
+                    putString("model", model)
                 }
                 val intent = Intent(context, MainActivity::class.java)
                 context.startActivity(intent)

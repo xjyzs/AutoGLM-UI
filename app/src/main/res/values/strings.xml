@@ -3,4 +3,5 @@
     <string name="title_activity_input_dialog">InputDialogActivity</string>
     <string name="title_activity_dialog">DialogActivity</string>
     <string name="title_activity_config">ConfigActivity</string>
+    <string name="title_activity_welcome">WelcomeActivity</string>
 </resources>

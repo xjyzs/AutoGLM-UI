@@ -10,31 +10,61 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.xjyzs.autoglm_ui.ui.theme.AutoGLMUITheme
+import java.nio.charset.StandardCharsets
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +72,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AutoGLMUITheme {
-                MainUI()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.surfaceContainer
+                ) {
+                    MainUI()
+                }
             }
         }
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -62,9 +97,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             audioManager.requestAudioFocus(
-                focusChangeListener,
-                AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN
+                focusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN
             )
             mediaPlayer.apply {
                 isLooping = true
@@ -78,6 +111,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainUI() {
     val context = LocalContext.current
@@ -85,6 +119,8 @@ fun MainUI() {
     var rootPermission by remember { mutableStateOf(true) }
     val lifecycleOwner = LocalLifecycleOwner.current
     var isIgnoringBatteryOptimizations by remember { mutableStateOf(true) }
+    val apiPref = context.getSharedPreferences("api", Context.MODE_PRIVATE)
+    val imeLst = remember { mutableStateListOf<String>() }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -101,6 +137,15 @@ fun MainUI() {
     LaunchedEffect(Unit) {
         try {
             Runtime.getRuntime().exec("su")
+            try {
+                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "ime list -a -s"))
+                val output = String(process.inputStream.readAllBytes(), StandardCharsets.UTF_8)
+                val lst = output.split("\n")
+                imeLst.addAll(output.split("\n").subList(0, lst.size - 1))
+                Runtime.getRuntime()
+                    .exec(arrayOf("su", "-c", "ime enable com.android.adbkeyboard/.AdbIME"))
+            } catch (_: Exception) {
+            }
         } catch (_: Exception) {
             rootPermission = false
         }
@@ -148,20 +193,75 @@ fun MainUI() {
             text = { Text("允许后，你可以与 AI 交互。") })
     }
     LaunchedEffect(overlayPermission) {
-        if (overlayPermission) {
-            ContextCompat.startForegroundService(
-                context, Intent(context, FloatingWindowService::class.java)
-            )
+        if (apiPref.getString("apiUrl", "")!!.isNotEmpty()) {
+            if (overlayPermission) {
+                ContextCompat.startForegroundService(
+                    context, Intent(context, FloatingWindowService::class.java)
+                )
+            }
+        } else {
+            context.startActivity(Intent(context, WelcomeActivity::class.java))
+            (context as ComponentActivity).finish()
         }
 
     }
-    Scaffold() { paddingValues ->
-        Button({
-            val intent = Intent(context, ConfigActivity::class.java)
-            context.startActivity(intent)
-            context.stopService(Intent(context, FloatingWindowService::class.java))
-            (context as ComponentActivity).finish()
-        }, Modifier.padding(paddingValues)) { Text("ConfigUI") }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer, topBar = {
+            LargeFlexibleTopAppBar(
+                title = { Text(stringResource(R.string.app_name)) }, actions = {
+                    IconButton(
+                        {
+                            val intent = Intent(context, ConfigActivity::class.java)
+                            context.startActivity(intent)
+                            context.stopService(Intent(context, FloatingWindowService::class.java))
+                            (context as ComponentActivity).finish()
+                        }, colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                        )
+                    ) { Icon(Icons.Default.Settings, null) }
+                }, colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                )
+            )
+        }, modifier = Modifier.padding(horizontal = 8.dp)
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+        ) {
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("设置输入法", fontSize = 22.sp, modifier = Modifier.padding(start = 10.dp))
+                TextButton({
+                    try {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            "https://github.com/senzhk/ADBKeyBoard/releases".toUri()
+                        )
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "未找到浏览器", Toast.LENGTH_SHORT).show()
+                    }
+                }) { Text("下载 ADB Keyboard", fontSize = 16.sp) }
+            }
+            Spacer(Modifier.size(6.dp))
+            for (i in imeLst) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                            Runtime.getRuntime().exec(arrayOf("su", "-c", "ime set $i"))
+                        }
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                        .padding(12.dp, 10.dp)) {
+                    Text(i, fontSize = 16.sp)
+                }
+                Spacer(Modifier.size(6.dp))
+            }
+        }
     }
 
 }

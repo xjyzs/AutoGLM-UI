@@ -20,7 +20,6 @@ import kotlin.math.min
 import androidx.core.view.isGone
 
 suspend fun screenshot(context: Context,mFloatingView: View): String {
-    println(System.currentTimeMillis())
     context.sendBroadcast(Intent("ACTION_HIDE_FLOATING"))
     waitForViewGone(mFloatingView)
     try {
