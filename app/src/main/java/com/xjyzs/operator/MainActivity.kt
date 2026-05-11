@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui
+package com.xjyzs.operator
 
 import android.Manifest
 import android.content.Context
@@ -58,11 +58,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.xjyzs.autoglm_ui.ui.theme.AutoGLMUITheme
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.gson.Gson
+import com.google.gson.JsonParser
+import com.xjyzs.operator.ui.theme.OperatorTheme
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 
 
@@ -71,13 +77,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AutoGLMUITheme {
+            OperatorTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surfaceContainer
-                ) {
-                    MainUI()
-                }
+                ) { MainUI() }
             }
         }
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -121,6 +125,9 @@ fun MainUI() {
     var isIgnoringBatteryOptimizations by remember { mutableStateOf(true) }
     val apiPref = context.getSharedPreferences("api", Context.MODE_PRIVATE)
     val imeLst = remember { mutableStateListOf<String>() }
+    val pref = context.getSharedPreferences("history", Context.MODE_PRIVATE)
+    val historyLst = remember { mutableStateListOf<String>() }
+    val newMsg by SharedState.newMsg.collectAsStateWithLifecycle()
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -134,14 +141,35 @@ fun MainUI() {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+    LaunchedEffect(newMsg) {
+        if (newMsg.isEmpty()) {
+            val historyStr = pref.getString("history", "[]")!!
+            for (i in JsonParser.parseString(historyStr).asJsonArray) {
+                historyLst.add(i.asString)
+            }
+        } else {
+            historyLst.add(newMsg)
+            pref.edit { putString("history", Gson().toJson(historyLst).toString()) }
+        }
+    }
     LaunchedEffect(Unit) {
         try {
             Runtime.getRuntime().exec("su")
             try {
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "ime list -a -s"))
-                val output = String(process.inputStream.readAllBytes(), StandardCharsets.UTF_8)
-                val lst = output.split("\n")
-                imeLst.addAll(output.split("\n").subList(0, lst.size - 1))
+                val reader =
+                    BufferedReader(InputStreamReader(process.inputStream, StandardCharsets.UTF_8))
+                val outputBuilder = StringBuilder()
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    outputBuilder.append(line).append("\n")
+                }
+                val output = outputBuilder.toString()
+                val list = output.split("\n")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                imeLst.clear()
+                imeLst.addAll(list)
                 Runtime.getRuntime()
                     .exec(arrayOf("su", "-c", "ime enable com.android.adbkeyboard/.AdbIME"))
             } catch (_: Exception) {
@@ -251,13 +279,30 @@ fun MainUI() {
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable {
                             Runtime.getRuntime().exec(arrayOf("su", "-c", "ime set $i"))
                         }
                         .background(MaterialTheme.colorScheme.surfaceContainerLowest)
                         .padding(12.dp, 10.dp)) {
                     Text(i, fontSize = 16.sp)
+                }
+                Spacer(Modifier.size(6.dp))
+            }
+            Spacer(Modifier.size(6.dp))
+            Text("历史记录", fontSize = 22.sp, modifier = Modifier.padding(start = 10.dp))
+            Spacer(Modifier.size(6.dp))
+            for (i in 0..<historyLst.size) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            SharedState.update(historyLst[historyLst.size - 1 - i])
+                        }
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                        .padding(12.dp, 10.dp)) {
+                    Text(historyLst[historyLst.size - 1 - i], fontSize = 16.sp)
                 }
                 Spacer(Modifier.size(6.dp))
             }

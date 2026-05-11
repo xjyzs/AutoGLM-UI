@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui
+package com.xjyzs.operator
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

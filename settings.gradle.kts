@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AutoGLM-UI"
+rootProject.name = "Operator on Android"
 include(":app")
  

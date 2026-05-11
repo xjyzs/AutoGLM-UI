@@ -4,15 +4,15 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.xjyzs.autoglm_ui",
+  "applicationId": "com.xjyzs.operator",
   "variantName": "arm64Minsdk35Release",
   "elements": [
     {
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 1,
-      "versionName": "1.0",
+      "versionCode": 4,
+      "versionName": "1.2",
       "outputFile": "app-arm64Minsdk35-release.apk"
     }
   ],

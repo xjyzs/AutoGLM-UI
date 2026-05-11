@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui.ui.theme
+package com.xjyzs.operator.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

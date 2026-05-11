@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui.utils
+package com.xjyzs.operator.utils
 
 import android.os.Build
 import android.os.VibrationAttributes

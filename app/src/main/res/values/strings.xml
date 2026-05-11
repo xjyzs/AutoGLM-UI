@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">AutoGLM-UI</string>
+    <string name="app_name">Operator</string>
     <string name="title_activity_input_dialog">InputDialogActivity</string>
     <string name="title_activity_dialog">DialogActivity</string>
     <string name="title_activity_config">ConfigActivity</string>

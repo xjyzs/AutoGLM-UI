@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui.utils
+package com.xjyzs.operator.utils
 
 import java.util.Locale
 
@@ -10,6 +10,8 @@ val APP_PACKAGES_SPECIAL = linkedMapOf(
     "支付宝" to "com.eg.android.AlipayGphone",
     "浏览器" to "mark.via",
     "系统浏览器" to "mark.via",
+    "Browser" to "mark.via",
+    "browser" to "mark.via",
 // Social & Messaging
     "微信" to "com.tencent.mm",
     "QQ" to "com.tencent.mobileqq",

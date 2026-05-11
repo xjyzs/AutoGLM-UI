@@ -1,6 +1,5 @@
-package com.xjyzs.autoglm_ui
+package com.xjyzs.operator
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -20,7 +19,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import com.xjyzs.autoglm_ui.ui.theme.AutoGLMUITheme
+import com.xjyzs.operator.ui.theme.OperatorTheme
 
 class InputDialogActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,7 +27,7 @@ class InputDialogActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            AutoGLMUITheme {
+            OperatorTheme {
                 InputDialogActivityUI()
             }
         }

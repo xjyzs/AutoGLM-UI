@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui
+package com.xjyzs.operator
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,7 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import com.xjyzs.autoglm_ui.ui.theme.AutoGLMUITheme
+import com.xjyzs.operator.ui.theme.OperatorTheme
 
 class DialogActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,7 +18,7 @@ class DialogActivity : ComponentActivity() {
         val title = intent.getStringExtra("title") ?: ""
         val text = intent.getStringExtra("text") ?: ""
         setContent {
-            AutoGLMUITheme {
+            OperatorTheme {
                 DialogActivityUI(title,text)
             }
         }

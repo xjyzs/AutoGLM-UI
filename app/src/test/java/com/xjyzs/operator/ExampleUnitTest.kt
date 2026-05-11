@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui
+package com.xjyzs.operator
 
 import org.junit.Test
 

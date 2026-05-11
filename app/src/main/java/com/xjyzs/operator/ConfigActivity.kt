@@ -1,4 +1,4 @@
-package com.xjyzs.autoglm_ui
+package com.xjyzs.operator
 
 import android.content.Context
 import android.content.Intent
@@ -45,7 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.google.gson.JsonParser
-import com.xjyzs.autoglm_ui.ui.theme.AutoGLMUITheme
+import com.xjyzs.operator.ui.theme.OperatorTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,7 +60,7 @@ class ConfigActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AutoGLMUITheme {
+            OperatorTheme {
                 ConfigUI()
             }
         }
